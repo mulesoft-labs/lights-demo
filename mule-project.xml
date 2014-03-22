@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<mule-project xmlns="http://www.mulesoft.com/tooling/project" runtimeId="org.mule.tooling.server.3.5.0.ee" schemaVersion="3.5.0.0">
+    <name>lights-simple</name>
+    <description></description>
+    <muleExtension name="APIkit" qualifier="org.mule.tooling.apikit"/>
+    <muleExtension name="Blink(1)" qualifier="org.mule.tooling.ui.contribution.blink1"/>
+    <muleExtension name="APIkit" qualifier="org.mule.tooling.apikit"/>
+</mule-project>

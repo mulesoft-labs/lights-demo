@@ -1,0 +1,68 @@
+#%RAML 0.8
+title: "Demo API for controling lights"
+version: v1
+#baseUri: http://lights.cloudhub.io/api
+baseUri: http://mocksvc.mulesoft.com/mocks/7bebee0f-18f5-4828-b6b4-3649f0d582cd/api
+schemas:
+  - light: |
+      {  "$schema": "http://json-schema.org/draft-03/schema",
+         "type": "object",
+         "description": "A light resource",
+         "properties": {
+           "id": { "type": "string" },
+           "state":  { "type": "string" },
+           "color": { "type": "string" },
+           "meta-data": { "type": "string" }
+         }
+      }
+
+/{lightId}:
+    get:
+      description: gets the status of the light
+      responses:
+        200:
+          body:
+            application/json:
+              schema: light
+              example: |
+                [
+                  {
+                    "id": "0",
+                    "state": "on",
+                    "color": "red"
+                  }
+                ]
+    post:
+      description: updates the state of the light through form parameters
+      responses:
+          200:
+            description: OK
+      body:
+        application/x-www-form-urlencoded:
+          formParameters:
+            state:
+              required: true
+              example: on
+            color:
+              required: true
+              example: red
+    patch:
+      description: update the state of the light. You can set the color and on/off state
+      body:
+        application/json:
+          example: |
+            {
+              "state": "on",
+              "color": "green"
+            }
+      responses:
+        200:
+          body:
+            application/json:
+              schema: light
+              example: |
+                  {
+                    "id": "0",
+                    "state": "on",
+                    "color": "green"
+                  }

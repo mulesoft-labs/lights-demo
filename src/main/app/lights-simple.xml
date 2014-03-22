@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking"
+	xmlns:blink1="http://www.mulesoft.org/schema/mule/blink1" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/apikit"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:spring="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/apikit http://www.mulesoft.org/schema/mule/apikit/current/mule-apikit.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+http://www.mulesoft.org/schema/mule/blink1 http://www.mulesoft.org/schema/mule/blink1/1.0/mule-blink1.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd"
+	version="EE-3.5.0">
+	<apikit:config name="lights-simple-config" raml="lights-simple.raml"
+		consoleEnabled="true" consolePath="console" doc:name="Router" />
+	<apikit:mapping-exception-strategy
+		name="lights-simple-apiKitGlobalExceptionMapping">
+		<apikit:mapping statusCode="404">
+			<apikit:exception
+				value="org.mule.module.apikit.exception.NotFoundException" />
+			<set-property propertyName="Content-Type" value="application/json" />
+			<set-payload
+				value="{ &quot;message&quot;: &quot;Resource not found&quot; }" />
+		</apikit:mapping>
+		<apikit:mapping statusCode="405">
+			<apikit:exception
+				value="org.mule.module.apikit.exception.MethodNotAllowedException" />
+			<set-property propertyName="Content-Type" value="application/json" />
+			<set-payload
+				value="{ &quot;message&quot;: &quot;Method not allowed&quot; }" />
+		</apikit:mapping>
+		<apikit:mapping statusCode="415">
+			<apikit:exception
+				value="org.mule.module.apikit.exception.UnsupportedMediaTypeException" />
+			<set-property propertyName="Content-Type" value="application/json" />
+			<set-payload
+				value="{ &quot;message&quot;: &quot;Unsupported media type&quot; }" />
+		</apikit:mapping>
+		<apikit:mapping statusCode="406">
+			<apikit:exception
+				value="org.mule.module.apikit.exception.NotAcceptableException" />
+			<set-property propertyName="Content-Type" value="application/json" />
+			<set-payload value="{ &quot;message&quot;: &quot;Not acceptable&quot; }" />
+		</apikit:mapping>
+		<apikit:mapping statusCode="400">
+			<apikit:exception
+				value="org.mule.module.apikit.exception.BadRequestException" />
+			<set-property propertyName="Content-Type" value="application/json" />
+			<set-payload value="{ &quot;message&quot;: &quot;Bad request&quot; }" />
+		</apikit:mapping>
+	</apikit:mapping-exception-strategy>
+	<blink1:config name="Blink_1_" doc:name="Blink(1)" />
+    <ee:object-store-caching-strategy name="Caching_Strategy" keyGenerationExpression="#[flowvars['lightId']]" doc:name="Caching Strategy">
+        <in-memory-store name="lights-store"/>
+    </ee:object-store-caching-strategy>
+	<flow name="lights-simple-main" doc:name="lights-simple-main">
+		<http:inbound-endpoint address="http://localhost:8081/api"
+			doc:name="HTTP" />
+		<apikit:router config-ref="lights-simple-config"
+			doc:name="APIkit Router" />
+		<exception-strategy ref="lights-simple-apiKitGlobalExceptionMapping"
+			doc:name="Reference Exception Strategy" />
+	</flow>
+	<flow name="patch:/{lightId}:lights-simple-config" doc:name="patch:/{lightId}:lights-simple-config">
+		<set-payload
+			value="{&#xA;  &quot;id&quot;: &quot;0&quot;,&#xA;  &quot;state&quot;: &quot;on&quot;,&#xA;  &quot;color&quot;: &quot;green&quot;&#xA;}"
+			doc:name="Set Payload" />
+        <flow-ref name="post:/{lightId}:lights-simple-config" doc:name="Flow Reference"/>
+	</flow>
+	<flow name="get:/{lightId}:lights-simple-config" doc:name="get:/{lightId}:lights-simple-config">
+		<blink1:get-statuses config-ref="Blink_1_"
+			doc:name="Blink(1)" />
+	</flow>
+	<flow name="post:/{lightId}:lights-simple-config" doc:name="post:/{lightId}:lights-simple-config">
+		<choice doc:name="Choice">
+			<when expression="#[payload['state'] == 'off']">
+				<blink1:clear-pattern config-ref="Blink_1_" deviceId="0" doc:name="Turn off" />
+                <blink1:set-color config-ref="Blink_1_" deviceId="0" color="black" doc:name="Go Black"/>
+                <logger message="Turned the light off!" level="INFO" doc:name="Logger"/>
+			</when>
+			<otherwise>
+				<choice doc:name="Choice">
+					<when expression="#[payload['state'] == 'disco']">
+						<custom-transformer
+							class="com.mulesoft.demo.lights.GoDisco" doc:name="Create color pattern" />
+						<blink1:store-pattern config-ref="Blink_1_"
+							deviceId="0" doc:name="Set disco pattern">
+							<blink1:entries ref="#[payload['pattern']]" />
+						</blink1:store-pattern>
+						<blink1:start-pattern config-ref="Blink_1_"
+							deviceId="0" doc:name="Go Disco" />
+                        <logger message="DISCO!" level="INFO" doc:name="Logger"/>
+					</when>
+					<otherwise>
+                        <blink1:set-color config-ref="Blink_1_" deviceId="0" color="#[payload['color']]" doc:name="Set Color"/>
+                        <logger message="Turned the light #[payload]" level="INFO" doc:name="Logger"/>
+                    </otherwise>
+				</choice>
+			</otherwise>
+		</choice>
+        <json:object-to-json-transformer doc:name="Object to JSON"/>
+        <!--<set-payload value="#[&quot;Set blink light #[flowVars['lightId']] to color: #[payload['color']]. State is #[payload['state']].&quot;]" doc:name="Set Payload"/>-->
+	</flow>
+</mule>
